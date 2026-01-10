@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>电商美工文案库 By:魅亚力</title>
+    <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+    <link rel="stylesheet" href="./styles.css">
+    <script>
+        tailwind.config = {
+            important: true,
+            theme: {
+                extend: {
+                    colors: {
+                        cream: '#F0F9FF',
+                        cocoa: '#1E293B',
+                        primary: {
+                            50: '#EFF6FF',
+                            100: '#DBEAFE',
+                            500: '#3B82F6',
+                            600: '#2563EB',
+                            700: '#1D4ED8'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <script src="http://manmyl.pages.dev/data.js"></script>
+</head>
+<body class="bg-cream min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="flex justify-between items-center mb-8 px-6 py-4 bg-white shadow-sm rounded-2xl">
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-cocoa mb-1">
+                    电商美工文案库
+                </h1>
+                <p class="text-sm text-gray-600">
+                    精选优质文案，一键复制即用
+                </p>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="uploadBtn" class="px-5 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors shadow-sm">
+                    上传文案
+                </button>
+                <button 
+                    id="helpBtn"
+                    class="px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-colors shadow-sm"
+                >
+                    帮助
+                </button>
+                <button 
+                    id="aboutBtn"
+                    class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                >
+                    关于
+                </button>
+            </div>
+        </header>
+
+        <input type="file" id="fileInput" accept=".txt,.js" style="display: none;" />
+
+        <div class="mb-8">
+            <div class="relative max-w-2xl mx-auto">
+                <div class="flex gap-2">
+                    <div class="relative flex-1">
+                        <input 
+                            type="text" 
+                            id="searchInput"
+                            placeholder="搜索文案内容、分类..."
+                            class="w-full px-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none search-input text-cocoa shadow-sm"
+                        >
+                        <svg class="absolute right-6 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </div>
+                    <button 
+                        id="clearSearchBtn"
+                        class="hidden items-center justify-center px-6 py-4 rounded-2xl bg-primary-500 text-white font-medium hover:bg-primary-600 transition-all shadow-sm clear-btn"
+                        title="清空搜索"
+                    >
+                        <svg class="w-5 h-5 clear-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <div class="flex flex-wrap gap-2 justify-center" id="categoryContainer">
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6" id="contentGrid">
+            <div class="col-span-full text-center py-12 loading">
+                <div class="inline-block w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
+                <p class="mt-4 text-gray-600">加载中...</p>
+            </div>
+        </div>
+
+        <div id="emptyState" class="hidden empty-state">
+            <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <p class="text-xl text-gray-500">暂无匹配的文案内容</p>
+            <p class="text-sm text-gray-400 mt-2">试试其他关键词或分类</p>
+        </div>
+    </div>
+
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+            <div class="flex justify-between items-center px-6 py-5 border-b border-gray-200">
+                <h3 class="text-xl font-bold text-cocoa">文案数据文件使用方法</h3>
+                <button 
+                    id="closeHelpBtn"
+                    class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
+                    aria-label="关闭弹窗"
+                >
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="px-6 py-5 overflow-y-auto flex-1">
+                <div class="space-y-4">
+                    <div>
+                        <p class="text-base font-semibold text-gray-800 mb-3">💡 使用说明：</p>
+                        <ol class="list-decimal pl-6 space-y-2 text-gray-700">
+                            <li>只支持上传 <span class="font-mono text-sm bg-blue-50 text-blue-600 px-2 py-0.5 rounded">TXT</span> 或 <span class="font-mono text-sm bg-blue-50 text-blue-600 px-2 py-0.5 rounded">JS</span> 格式</li>
+                            <li>使用 <code class="font-mono text-sm bg-gray-100 text-pink-600 px-2 py-0.5 rounded">[分类名称]</code> 来标记不同的分类段落</li>
+                            <li>每行一条文案，支持空行</li>
+                            <li>以 <code class="font-mono text-sm bg-gray-100 text-pink-600 px-2 py-0.5 rounded">//</code> 或 <code class="font-mono text-sm bg-gray-100 text-pink-600 px-2 py-0.5 rounded">#</code> 开头的行会被系统忽略（可作为注释）</li>
+                        </ol>
+                    </div>
+                    
+                    <div class="pt-2">
+                        <div class="flex justify-between items-center mb-3">
+                            <p class="text-base font-semibold text-gray-800">📝 示例格式：</p>
+                            <a 
+                                href="./数据文件.txt" 
+                                download="数据文件.txt"
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors shadow-sm font-medium"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                </svg>
+                                下载数据文件
+                            </a>
+                        </div>
+                        <pre class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800">[卖点]
+质感与舒适并存，一裤驾驭商务、日常、户外多元场景
+多款颜色都好搭，不同面料同样舒适
+
+[面料]
+莱赛尔棉：柔软亲肤，透气垂坠，砂洗工艺升级触感，告别紧绷
+零压轻松裤：高弹面料，无束缚感，久坐不勒腰</pre>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-center">
+                <button 
+                    id="closeHelpBtnBottom"
+                    class="px-6 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors shadow-sm"
+                >
+                    我知道了
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="aboutModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
+            <div class="text-6xl mb-4">😊</div>
+            <p class="text-lg font-medium text-gray-800">制作: 魅亚力</p>
+            <button 
+                id="closeAboutBtn"
+                class="mt-6 px-6 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors shadow-sm"
+            >
+                关闭
+            </button>
+        </div>
+    </div>
+
+    <button 
+        id="backToTopBtn" 
+        class="fixed bottom-8 right-8 p-4 bg-primary-500 text-white rounded-full shadow-lg hover:bg-primary-600 transition-all duration-300 z-50"
+        style="opacity: 0; pointer-events: none;"
+        title="回到顶部"
+    >
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 10l7-7m0 0l7 7m-7-7v18"></path>
+        </svg>
+    </button>
+
+    <script src="./scripts.js"></script>
+</body>
+</html>

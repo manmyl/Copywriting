@@ -1,0 +1,116 @@
+/* 自定义配置 - 防止样式冲突 */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* 全局字体设置 */
+* {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+/* 滚动条样式 - 蓝色主题 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F0F9FF;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #93C5FD;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #60A5FA;
+}
+
+/* 卡片悬停效果 */
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+/* 标签悬停效果 */
+.tag-hover {
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+}
+
+.tag-hover:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* 搜索框聚焦效果 */
+.search-input:focus {
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  outline: none;
+}
+
+/* 清空按钮样式 */
+.clear-btn {
+  transition: all 0.2s ease-in-out;
+}
+
+.clear-btn:active {
+  transform: scale(0.95);
+}
+
+.clear-icon {
+  width: 1.25rem;
+  height: 1.25rem;
+  stroke-width: 2;
+}
+
+/* 空状态提示 */
+.empty-state {
+  opacity: 0.6;
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+/* 加载动画 */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.loading {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+/* 回到顶部按钮样式 */
+#backToTopBtn {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+#backToTopBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(59, 130, 246, 0.4);
+}
+
+#backToTopBtn:active {
+  transform: translateY(0);
+}
+
+/* 响应式优化 */
+@media (max-width: 640px) {
+  .card-hover:hover {
+    transform: none;
+  }
+  
+  .tag-hover:hover {
+    transform: scale(1.05);
+  }
+
+  #backToTopBtn {
+    bottom: 1.5rem;
+    right: 1.5rem;
+    padding: 0.75rem;
+  }
+}
