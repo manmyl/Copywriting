@@ -19,6 +19,160 @@ const elements = {
   fileInput: null
 };
 
+// 用户认证管理器
+const authManager = {
+  users: JSON.parse(localStorage.getItem('cp_users') || '{}'),
+  currentUser: localStorage.getItem('cp_current_user') || null,
+
+  init() {
+    this.renderAuthUI();
+    this.updateDataSourceLabel('local');
+    this.updateUserStatusLabel();
+  },
+
+  isLoggedIn() {
+    return !!this.currentUser;
+  },
+
+  login(username, password) {
+    const user = this.users[username];
+    if (user && user.password === password) {
+      this.currentUser = username;
+      localStorage.setItem('cp_current_user', username);
+      this.renderAuthUI();
+      this.updateUserStatusLabel();
+      loadData();
+      renderCategories();
+      state.searchKeyword = '';
+      if(elements.searchInput) elements.searchInput.value = '';
+      toggleClearButton();
+      
+      state.filteredContent = [...state.allContent];
+      renderContent();
+      showNotification(`欢迎回来，${username}`, 'success');
+      return true;
+    }
+    return false;
+  },
+
+  register(username, password) {
+    if (this.users[username]) {
+      return { success: false, message: '用户名已存在' };
+    }
+    this.users[username] = { password };
+    localStorage.setItem('cp_users', JSON.stringify(this.users));
+    
+    this.currentUser = username;
+    localStorage.setItem('cp_current_user', username);
+    this.renderAuthUI();
+    this.updateUserStatusLabel();
+    
+    this.saveUserData({
+      categories: [...state.categories],
+      content: [...state.allContent]
+    });
+    
+    showNotification(`注册成功，欢迎 ${username}`, 'success');
+    return { success: true };
+  },
+
+  logout() {
+    this.currentUser = null;
+    localStorage.removeItem('cp_current_user');
+    this.renderAuthUI();
+    this.updateUserStatusLabel();
+    
+    loadData();
+    renderCategories();
+    state.searchKeyword = '';
+    if(elements.searchInput) elements.searchInput.value = '';
+    toggleClearButton();
+    state.filteredContent = [...state.allContent];
+    renderContent();
+    showNotification('已退出登录', 'success');
+  },
+
+  getUserData() {
+    if (!this.currentUser) return null;
+    const key = `cp_data_${this.currentUser}`;
+    const data = localStorage.getItem(key);
+    return data ? JSON.parse(data) : null;
+  },
+
+  saveUserData(data) {
+    if (!this.currentUser) return;
+    const key = `cp_data_${this.currentUser}`;
+    localStorage.setItem(key, JSON.stringify(data));
+  },
+
+  updateDataSourceLabel(source = 'local') {
+    const label = document.getElementById('dataSourceLabel');
+    if (label) {
+      label.textContent = source === 'online' ? '在线' : '本地';
+      label.className = source === 'online'
+        ? 'ml-2 px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 font-medium animate-pulse'
+        : 'ml-2 px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-700 font-medium';
+      label.classList.remove('hidden');
+      if (source === 'online') {
+        setTimeout(() => label.classList.remove('animate-pulse'), 2000);
+      }
+    }
+  },
+
+  updateUserStatusLabel() {
+    const label = document.getElementById('userStatusLabel');
+    if (label) {
+      const isLoggedIn = this.isLoggedIn();
+      label.textContent = isLoggedIn ? '私自' : '访客';
+      label.className = isLoggedIn 
+        ? 'ml-2 px-2 py-0.5 text-xs rounded bg-purple-100 text-purple-700 font-medium'
+        : 'ml-2 px-2 py-0.5 text-xs rounded bg-green-100 text-green-700 font-medium';
+      label.classList.remove('hidden');
+    }
+  },
+
+  renderAuthUI() {
+    const headerBtnContainer = document.querySelector('header .flex.gap-3');
+    if (!headerBtnContainer) return;
+
+    const oldContainer = document.getElementById('authContainer');
+    if (oldContainer) oldContainer.remove();
+
+    const container = document.createElement('div');
+    container.id = 'authContainer';
+    container.className = 'flex items-center gap-2 border-l border-gray-200 pl-4 ml-2';
+
+    if (this.currentUser) {
+      container.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="flex flex-col items-end">
+            <span class="text-xs text-gray-500">当前用户</span>
+            <span class="text-sm font-bold text-cocoa max-w-[100px] truncate">${this.currentUser}</span>
+          </div>
+          <button id="logoutBtn" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 hover:text-red-600 transition-colors text-sm font-medium">
+            退出
+          </button>
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <button id="loginTriggerBtn" class="px-5 py-2.5 bg-cocoa text-white rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-sm flex items-center gap-2">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+          登录 / 注册
+        </button>
+      `;
+    }
+
+    headerBtnContainer.appendChild(container);
+
+    if (this.currentUser) {
+      document.getElementById('logoutBtn')?.addEventListener('click', () => this.logout());
+    } else {
+      document.getElementById('loginTriggerBtn')?.addEventListener('click', createAuthModal);
+    }
+  }
+};
+
 // 初始化应用
 function initApp() {
   try {
@@ -30,28 +184,41 @@ function initApp() {
     elements.uploadBtn = document.getElementById('uploadBtn');
     elements.fileInput = document.getElementById('fileInput');
 
+    window.authManager = authManager;
+    authManager.init();
     loadData();
     renderCategories();
     renderContent();
     bindEvents();
     initBackToTop();
     removeDuplicateDownloadButton();
+    
+    window.addEventListener('remoteDataLoaded', (e) => {
+      if (!authManager.isLoggedIn()) {
+        const remoteContent = e.detail;
+        const parsedData = parseCopywritingData(remoteContent);
+        if (parsedData && parsedData.content && parsedData.content.length > 0) {
+          state.allContent = parsedData.content;
+          state.categories = parsedData.categories;
+          state.filteredContent = [...state.allContent];
+          renderCategories();
+          renderContent();
+        }
+      }
+    });
   } catch (error) {
     console.error('初始化失败:', error);
     showError('加载失败，请刷新页面重试');
   }
 }
 
-// 删除重复的下载按钮（ID为downloadDataBtn）
 function removeDuplicateDownloadButton() {
   const duplicateButton = document.getElementById('downloadDataBtn');
   if (duplicateButton) {
     duplicateButton.remove();
-    console.log('✅ 已删除重复的下载按钮');
   }
 }
 
-// 解析COPYWRITING_DATA字符串格式
 function parseCopywritingData(dataText) {
   const lines = dataText.split('\n');
   const result = { categories: [], content: [] };
@@ -79,35 +246,41 @@ function parseCopywritingData(dataText) {
   return result;
 }
 
-// 加载数据（直接使用全局变量）
 function loadData() {
   try {
+    if (authManager.isLoggedIn()) {
+      const userData = authManager.getUserData();
+      if (userData && userData.content && userData.content.length > 0) {
+        console.log(`✅ 加载用户 [${authManager.currentUser}] 的私有数据`);
+        state.allContent = userData.content;
+        state.categories = userData.categories;
+        state.filteredContent = [...state.allContent];
+        state.currentCategory = 'all';
+        return;
+      }
+    }
+
     if (typeof COPYWRITING_DATA === 'undefined') {
       throw new Error('数据文件未加载，请检查 data.js 是否正确引入');
     }
     
-    console.log('✅ 使用全局变量 COPYWRITING_DATA 加载数据');
+    console.log('✅ 加载默认全局数据');
     const data = parseCopywritingData(COPYWRITING_DATA);
     
     if (data && data.content) {
       state.allContent = data.content || [];
       state.filteredContent = [...state.allContent];
       state.categories = data.categories || [];
-      console.log('✅ 数据加载完成:', {
-        分类数: state.categories.length,
-        文案数: state.allContent.length
-      });
+      state.currentCategory = 'all';
     } else {
       throw new Error('数据格式不正确，无法解析内容');
     }
   } catch (error) {
     console.error('❌ 数据加载错误:', error);
     showError(`数据加载失败: ${error.message}<br>请确保 data.js 文件正确引入且格式正确`);
-    throw error;
   }
 }
 
-// 渲染分类标签
 function renderCategories() {
   if (!elements.categoryContainer) return;
   
@@ -122,7 +295,6 @@ function renderCategories() {
   });
 }
 
-// 创建分类按钮 - 蓝色主题
 function createCategoryButton(label, value, isActive) {
   const button = document.createElement('button');
   button.textContent = label;
@@ -135,7 +307,6 @@ function createCategoryButton(label, value, isActive) {
   return button;
 }
 
-// 渲染文案内容
 function renderContent() {
   if (!elements.contentGrid) return;
   
@@ -154,7 +325,6 @@ function renderContent() {
   });
 }
 
-// 创建文案卡片 - 简化复制按钮动画
 function createContentCard(item) {
   const card = document.createElement('div');
   card.className = 'bg-white rounded-2xl p-5 shadow-sm card-hover relative';
@@ -181,7 +351,6 @@ function createContentCard(item) {
   return card;
 }
 
-// 复制文案
 async function copyText(text, button) {
   try {
     await navigator.clipboard.writeText(text);
@@ -193,7 +362,6 @@ async function copyText(text, button) {
   }
 }
 
-// 降级复制方案
 function fallbackCopy(text) {
   const textarea = document.createElement('textarea');
   textarea.value = text;
@@ -205,7 +373,6 @@ function fallbackCopy(text) {
   document.body.removeChild(textarea);
 }
 
-// 显示复制成功提示 - 简化动画，快速背景色变化
 function showCopySuccess(button) {
   const originalHTML = button.innerHTML;
   const originalClass = button.className;
@@ -221,7 +388,6 @@ function showCopySuccess(button) {
   }, 1200);
 }
 
-// 绑定事件
 function bindEvents() {
   if (elements.searchInput) {
     elements.searchInput.addEventListener('input', handleSearch);
@@ -243,59 +409,133 @@ function bindEvents() {
     elements.fileInput.addEventListener('change', handleFileUpload);
   }
 
-  const helpBtn = document.getElementById('helpBtn');
-  const closeHelpBtn = document.getElementById('closeHelpBtn');
-  const closeHelpBtnBottom = document.getElementById('closeHelpBtnBottom');
-  const helpModal = document.getElementById('helpModal');
+  setupModalEvents('helpBtn', 'helpModal', ['closeHelpBtn', 'closeHelpBtnBottom']);
+  setupModalEvents('aboutBtn', 'aboutModal', ['closeAboutBtn']);
+}
 
-  if (helpBtn && helpModal) {
-    helpBtn.addEventListener('click', () => {
-      helpModal.classList.remove('hidden');
-      helpModal.classList.add('flex');
+function setupModalEvents(triggerId, modalId, closeBtnIds) {
+  const trigger = document.getElementById(triggerId);
+  const modal = document.getElementById(modalId);
+  
+  if (trigger && modal) {
+    trigger.addEventListener('click', () => {
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
     });
-  }
-
-  if (closeHelpBtn && helpModal) {
-    closeHelpBtn.addEventListener('click', () => {
-      helpModal.classList.add('hidden');
-      helpModal.classList.remove('flex');
-    });
-  }
-
-  if (closeHelpBtnBottom && helpModal) {
-    closeHelpBtnBottom.addEventListener('click', () => {
-      helpModal.classList.add('hidden');
-      helpModal.classList.remove('flex');
-    });
-  }
-
-  const aboutBtn = document.getElementById('aboutBtn');
-  const closeAboutBtn = document.getElementById('closeAboutBtn');
-  const aboutModal = document.getElementById('aboutModal');
-
-  if (aboutBtn && aboutModal) {
-    aboutBtn.addEventListener('click', () => {
-      aboutModal.classList.remove('hidden');
-      aboutModal.classList.add('flex');
-    });
-  }
-
-  if (closeAboutBtn && aboutModal) {
-    closeAboutBtn.addEventListener('click', () => {
-      aboutModal.classList.add('hidden');
-      aboutModal.classList.remove('flex');
+    
+    closeBtnIds.forEach(btnId => {
+      const btn = document.getElementById(btnId);
+      if (btn) {
+        btn.addEventListener('click', () => {
+          modal.classList.add('hidden');
+          modal.classList.remove('flex');
+        });
+      }
     });
   }
 }
 
-// 处理上传按钮点击
+function createAuthModal() {
+  let modal = document.getElementById('authModal');
+  if (modal) {
+    modal.remove();
+  }
+
+  modal = document.createElement('div');
+  modal.id = 'authModal';
+  modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] auth-backdrop p-4';
+  
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden flex flex-col relative transform transition-all scale-100">
+      <button id="closeAuthModal" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+      </button>
+      
+      <div class="p-8">
+        <h3 class="text-2xl font-bold text-cocoa mb-2 text-center" id="authTitle">欢迎回来</h3>
+        <p class="text-gray-500 text-center mb-6 text-sm" id="authSubtitle">登录以管理您的专属文案库</p>
+        
+        <form id="authForm" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">用户名</label>
+            <input type="text" id="authUsername" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" placeholder="请输入用户名" required>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">密码</label>
+            <input type="password" id="authPassword" class="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 outline-none transition-all" placeholder="请输入密码" required>
+          </div>
+          
+          <button type="submit" id="authSubmitBtn" class="w-full py-3 bg-cocoa text-white rounded-xl font-bold text-lg hover:bg-gray-800 transition-transform active:scale-95 shadow-md mt-4">
+            立即登录
+          </button>
+        </form>
+        
+        <div class="mt-6 text-center">
+          <button id="toggleAuthMode" class="text-sm text-blue-600 font-medium hover:underline">
+            没有账号？点击注册
+          </button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  const form = document.getElementById('authForm');
+  const toggleBtn = document.getElementById('toggleAuthMode');
+  const title = document.getElementById('authTitle');
+  const subtitle = document.getElementById('authSubtitle');
+  const submitBtn = document.getElementById('authSubmitBtn');
+  const closeBtn = document.getElementById('closeAuthModal');
+  
+  let isLoginMode = true;
+
+  closeBtn.onclick = () => modal.remove();
+  
+  toggleBtn.onclick = (e) => {
+    e.preventDefault();
+    isLoginMode = !isLoginMode;
+    title.textContent = isLoginMode ? '欢迎回来' : '创建账号';
+    subtitle.textContent = isLoginMode ? '登录以管理您的专属文案库' : '注册即刻拥有私有文案空间';
+    submitBtn.textContent = isLoginMode ? '立即登录' : '立即注册';
+    toggleBtn.textContent = isLoginMode ? '没有账号？点击注册' : '已有账号？点击登录';
+    
+    document.getElementById('authUsername').value = '';
+    document.getElementById('authPassword').value = '';
+  };
+
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    const username = document.getElementById('authUsername').value.trim();
+    const password = document.getElementById('authPassword').value.trim();
+
+    if (!username || !password) return;
+
+    if (isLoginMode) {
+      if (!authManager.login(username, password)) {
+        showNotification('用户名或密码错误', 'error');
+        form.classList.add('shake');
+        setTimeout(() => form.classList.remove('shake'), 500);
+      } else {
+        modal.remove();
+      }
+    } else {
+      const result = authManager.register(username, password);
+      if (result.success) {
+        modal.remove();
+      } else {
+        showNotification(result.message, 'error');
+      }
+    }
+  };
+}
+
 function handleUploadClick() {
   if (elements.fileInput) {
     elements.fileInput.click();
   }
 }
 
-// 处理文件上传
 function handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -343,7 +583,6 @@ function handleFileUpload(event) {
   event.target.value = '';
 }
 
-// 解析 JS 文件
 function parseJSFile(content) {
   try {
     const match = content.match(/const\s+COPYWRITING_DATA\s*=\s*`([\s\S]*?)`/);
@@ -357,14 +596,18 @@ function parseJSFile(content) {
   }
 }
 
-// 显示上传模式选择弹窗
 function showUploadModeDialog(parsedData) {
   const modal = document.createElement('div');
   modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+  
+  const tipText = authManager.isLoggedIn() 
+    ? '您当前处于登录状态，上传操作将更新您的私有数据。' 
+    : '您当前为访客模式，刷新页面后数据将重置（建议登录后操作）。';
+
   modal.innerHTML = `
     <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
-      <h3 class="text-xl font-bold text-cocoa mb-4">选择上传模式</h3>
-      <p class="text-gray-600 mb-6">只作为临时使用, 刷新后恢复默认：</p>
+      <h3 class="text-xl font-bold text-cocoa mb-2">选择上传模式</h3>
+      <p class="text-gray-500 text-sm mb-4">${tipText}</p>
       <div class="space-y-3">
         <button 
           id="appendModeBtn"
@@ -413,7 +656,6 @@ function showUploadModeDialog(parsedData) {
   });
 }
 
-// 替换上传的数据
 function replaceUploadedData(uploadedData) {
   state.allContent = [];
   state.categories = [];
@@ -429,9 +671,15 @@ function replaceUploadedData(uploadedData) {
   renderCategories();
   state.filteredContent = [...state.allContent];
   renderContent();
+  
+  if (authManager.isLoggedIn()) {
+    authManager.saveUserData({
+      categories: state.categories,
+      content: state.allContent
+    });
+  }
 }
 
-// 合并上传的数据
 function mergeUploadedData(uploadedData) {
   uploadedData.categories.forEach(category => {
     if (!state.categories.includes(category)) {
@@ -454,12 +702,18 @@ function mergeUploadedData(uploadedData) {
   }
   
   renderContent();
+  
+  if (authManager.isLoggedIn()) {
+    authManager.saveUserData({
+      categories: state.categories,
+      content: state.allContent
+    });
+  }
 }
 
-// 显示通知
 function showNotification(message, type = 'success') {
   const notification = document.createElement('div');
-  notification.className = `fixed top-24 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-50 transition-all ${
+  notification.className = `fixed top-24 left-1/2 transform -translate-x-1/2 px-6 py-3 rounded-xl shadow-lg z-[100] transition-all ${
     type === 'success' 
       ? 'bg-blue-500 text-white' 
       : 'bg-red-500 text-white'
@@ -476,14 +730,12 @@ function showNotification(message, type = 'success') {
   }, 2000);
 }
 
-// 处理搜索
 function handleSearch(e) {
   state.searchKeyword = e.target.value.trim().toLowerCase();
   toggleClearButton();
   filterContent();
 }
 
-// 处理清空搜索
 function handleClearSearch() {
   if (elements.searchInput) {
     elements.searchInput.value = '';
@@ -494,7 +746,6 @@ function handleClearSearch() {
   }
 }
 
-// 切换清空按钮显示状态
 function toggleClearButton() {
   if (elements.clearSearchBtn) {
     if (state.searchKeyword) {
@@ -507,7 +758,6 @@ function toggleClearButton() {
   }
 }
 
-// 处理分类点击 - 蓝色主题
 function handleCategoryClick(e) {
   const button = e.target.closest('button[data-category]');
   if (!button) return;
@@ -523,7 +773,6 @@ function handleCategoryClick(e) {
   filterContent();
 }
 
-// 过滤内容
 function filterContent() {
   state.filteredContent = state.allContent.filter(item => {
     const matchCategory = state.currentCategory === 'all' || item.category === state.currentCategory;
@@ -537,28 +786,24 @@ function filterContent() {
   renderContent();
 }
 
-// 显示空状态
 function showEmptyState() {
   if (elements.emptyState) {
     elements.emptyState.classList.remove('hidden');
   }
 }
 
-// 隐藏空状态
 function hideEmptyState() {
   if (elements.emptyState) {
     elements.emptyState.classList.add('hidden');
   }
 }
 
-// 显示错误提示
 function showError(message) {
   if (elements.contentGrid) {
     elements.contentGrid.innerHTML = `<div class="col-span-full text-center py-12 text-gray-500">${message}</div>`;
   }
 }
 
-// 初始化回到顶部功能
 function initBackToTop() {
   const backToTopBtn = document.getElementById('backToTopBtn');
   
@@ -579,7 +824,6 @@ function initBackToTop() {
   });
 }
 
-// 页面加载完成后初始化
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initApp);
 } else {

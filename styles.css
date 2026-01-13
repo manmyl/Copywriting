@@ -114,3 +114,46 @@
     padding: 0.75rem;
   }
 }
+
+/* --- 新增：用户认证相关样式 --- */
+
+/* 登录/注册模态框背景模糊 */
+.auth-backdrop {
+  backdrop-filter: blur(5px);
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* 错误震动动画 */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+/* 表单切换过渡 */
+.form-fade-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.form-fade-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: all 0.3s ease-out;
+}
+
+/* 用户菜单过渡 */
+.user-menu-enter {
+  opacity: 0;
+  transform: scale(0.95) translateY(-5px);
+}
+
+.user-menu-enter-active {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
