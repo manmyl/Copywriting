@@ -29,33 +29,64 @@
             }
         }
     </script>
-    <script src="data.js"></script>
+    <script src="./data.js"></script>
+    
+    <script>
+        async function loadRemoteData() {
+            try {
+                const response = await fetch('https://manmyl.pages.dev/web_data.js');
+                if (!response.ok) throw new Error('Remote fetch failed');
+                
+                const text = await response.text();
+                const match = text.match(/const\s+COPYWRITING_DATA\s*=\s*`([\s\S]*?)`/);
+                
+                if (match && match[1]) {
+                    console.log('✅ 远程数据下载成功，准备切换...');
+                    
+                    const event = new CustomEvent('remoteDataLoaded', { detail: match[1] });
+                    window.dispatchEvent(event);
+                    
+                    if (window.authManager && typeof window.authManager.updateDataSourceLabel === 'function') {
+                        window.authManager.updateDataSourceLabel('online');
+                    }
+                }
+            } catch (error) {
+                console.warn('⚠️ 远程数据加载失败，继续使用本地数据');
+                if (window.authManager && typeof window.authManager.updateDataSourceLabel === 'function') {
+                    window.authManager.updateDataSourceLabel('local');
+                }
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadRemoteData);
+    </script>
 </head>
 <body class="bg-cream min-h-screen">
     <div class="container mx-auto px-4 py-8 max-w-7xl">
-        <header class="flex justify-between items-center mb-8 px-6 py-4 bg-white shadow-sm rounded-2xl">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 px-6 py-4 bg-white shadow-sm rounded-2xl gap-4 md:gap-0">
             <div>
-                <h1 class="text-2xl md:text-3xl font-bold text-cocoa mb-1">
+                <h1 class="text-2xl md:text-3xl font-bold text-cocoa mb-1 flex items-center gap-2 flex-wrap">
                     电商美工文案库
+                    <span id="dataSourceLabel" class="hidden ml-2 px-2 py-0.5 text-xs rounded bg-blue-100 text-blue-800 font-normal">本地</span>
+                    <span id="userStatusLabel" class="hidden ml-2 px-2 py-0.5 text-xs rounded bg-green-100 text-green-700 font-normal">访客</span>
                 </h1>
-                <p class="text-sm text-gray-600">
-                    精选优质文案，一键复制即用
-                </p>
             </div>
 
-            <div class="flex gap-3">
-                <button id="uploadBtn" class="px-5 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors shadow-sm">
-                    上传文案
+            <div class="flex flex-wrap items-center gap-3 justify-center md:justify-end">
+                <button id="uploadBtn" class="px-5 py-2.5 bg-blue-500 text-white rounded-xl font-medium hover:bg-blue-600 transition-colors shadow-sm text-sm flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0l-4 4m4-4v12"></path></svg>
+                    上传
                 </button>
                 <button 
                     id="helpBtn"
-                    class="px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-colors shadow-sm"
+                    class="px-5 py-2.5 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-medium hover:from-red-600 hover:to-red-700 transition-colors shadow-sm text-sm flex items-center gap-2"
                 >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     帮助
                 </button>
                 <button 
                     id="aboutBtn"
-                    class="px-5 py-2.5 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                    class="px-5 py-2.5 bg-green-500 text-white rounded-xl font-medium hover:bg-green-600 transition-colors text-sm"
                 >
                     关于
                 </button>
@@ -71,8 +102,8 @@
                         <input 
                             type="text" 
                             id="searchInput"
-                            placeholder="搜索文案内容、分类..."
-                            class="w-full px-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none search-input text-cocoa shadow-sm"
+                            placeholder="搜索文案内容、分类或标签..."
+                            class="w-full px-6 py-4 rounded-2xl border-2 border-gray-200 focus:border-primary-500 focus:outline-none search-input text-cocoa shadow-sm transition-colors"
                         >
                         <svg class="absolute right-6 top-1/2 transform -translate-y-1/2 w-6 h-6 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
@@ -96,14 +127,14 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6" id="contentGrid">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" id="contentGrid">
             <div class="col-span-full text-center py-12 loading">
                 <div class="inline-block w-12 h-12 border-4 border-primary-500 border-t-transparent rounded-full animate-spin"></div>
                 <p class="mt-4 text-gray-600">加载中...</p>
             </div>
         </div>
 
-        <div id="emptyState" class="hidden empty-state">
+        <div id="emptyState" class="hidden empty-state text-center py-12">
             <svg class="w-24 h-24 mx-auto text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
@@ -112,76 +143,72 @@
         </div>
     </div>
 
-    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 auth-backdrop">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden flex flex-col transform transition-all">
             <div class="flex justify-between items-center px-6 py-5 border-b border-gray-200">
-                <h3 class="text-xl font-bold text-cocoa">文案数据文件使用方法</h3>
-                <button 
-                    id="closeHelpBtn"
-                    class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100"
-                    aria-label="关闭弹窗"
-                >
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                    </svg>
+                <h3 class="text-xl font-bold text-cocoa">使用帮助</h3>
+                <button id="closeHelpBtn" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
             
             <div class="px-6 py-5 overflow-y-auto flex-1">
-                <div class="space-y-4">
+                <div class="space-y-6">
                     <div>
-                        <p class="text-base font-semibold text-gray-800 mb-3">💡 使用说明：</p>
-                        <ol class="list-decimal pl-6 space-y-2 text-gray-700">
-                            <li>只支持上传 <span class="font-mono text-sm bg-blue-50 text-blue-600 px-2 py-0.5 rounded">TXT</span> 或 <span class="font-mono text-sm bg-blue-50 text-blue-600 px-2 py-0.5 rounded">JS</span> 格式</li>
-                            <li>使用 <code class="font-mono text-sm bg-gray-100 text-pink-600 px-2 py-0.5 rounded">[分类名称]</code> 来标记不同的分类段落</li>
-                            <li>每行一条文案，支持空行</li>
-                            <li>以 <code class="font-mono text-sm bg-gray-100 text-pink-600 px-2 py-0.5 rounded">//</code> 或 <code class="font-mono text-sm bg-gray-100 text-pink-600 px-2 py-0.5 rounded">#</code> 开头的行会被系统忽略（可作为注释）</li>
-                        </ol>
+                        <p class="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <span class="bg-blue-100 text-blue-600 p-1 rounded">👤</span> 账号与多用户
+                        </p>
+                        <p class="text-sm text-gray-600 leading-relaxed pl-8">
+                            <span class="font-bold text-blue-600">私有空间</span>：注册登录后，您可以拥有独立的文案库，上传内容仅自己可见。<br>
+                            <span class="font-bold text-gray-500">访客模式</span>：未登录时使用公共文案库，数据与云端同步。
+                        </p>
                     </div>
-                    
-                    <div class="pt-2">
-                        <div class="flex justify-between items-center mb-3">
-                            <p class="text-base font-semibold text-gray-800">📝 示例格式：</p>
-                            <a 
-                                href="./数据文件.txt" 
-                                download="数据文件.txt"
-                                class="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors shadow-sm font-medium"
-                            >
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                </svg>
-                                下载数据文件
-                            </a>
-                        </div>
-                        <pre class="bg-gray-50 border border-gray-200 rounded-xl p-4 text-sm text-gray-800">[卖点]
-质感与舒适并存，一裤驾驭商务、日常、户外多元场景
-多款颜色都好搭，不同面料同样舒适
 
-[面料]
-莱赛尔棉：柔软亲肤，透气垂坠，砂洗工艺升级触感，告别紧绷
-零压轻松裤：高弹面料，无束缚感，久坐不勒腰</pre>
+                    <div>
+                        <p class="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <span class="bg-green-100 text-green-600 p-1 rounded">💾</span>
+                            <a href="./数据文件.txt" 
+                                download="数据文件.txt"
+                                class="flex items-center gap-1.5 px-3 py-1.5 bg-green-500 text-white text-sm rounded-lg hover:bg-green-600 transition-colors shadow-sm font-medium" >
+                                下载数据文件</a>
+                           </p>
+                    </div>
+
+                    <div>
+                        <p class="text-base font-semibold text-gray-800 mb-3 flex items-center gap-2">
+                            <span class="bg-purple-100 text-purple-600 p-1 rounded">📥</span> 导入格式说明
+                        </p>
+                        <div class="pl-8">
+                            <p class="text-sm text-gray-600 mb-2">支持 .txt 文本导入，标准格式如下：</p>
+                            <pre class="bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-600 font-mono">[分类名称]
+第一条文案内容
+第二条文案内容
+
+[另一个分类]
+...</pre>
+                        </div>
                     </div>
                 </div>
             </div>
             
             <div class="px-6 py-4 border-t border-gray-200 flex justify-center">
-                <button 
-                    id="closeHelpBtnBottom"
-                    class="px-6 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors shadow-sm"
-                >
-                    我知道了
-                </button>
+                <button id="closeHelpBtnBottom" class="px-8 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors shadow-sm">我知道了</button>
             </div>
         </div>
     </div>
 
-    <div id="aboutModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center">
-            <div class="text-6xl mb-4">😊</div>
-            <p class="text-lg font-medium text-gray-800">制作: 魅亚力</p>
+    <div id="aboutModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 auth-backdrop">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-8 text-center transform transition-all">
+            <div class="text-6xl mb-4 hover:scale-110 transition-transform cursor-pointer">✨</div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">电商美工文案库</h3>
+            <p class="text-sm text-gray-500 mb-6">Designed By 魅亚力</p>
+            <div class="text-xs text-gray-400 bg-gray-50 p-4 rounded-xl mb-6 leading-relaxed">
+                <p>致力于提供极致的文案管理体验</p>
+                <p class="mt-1">多用户支持 · 实时同步 · 极致轻量</p>
+            </div>
             <button 
                 id="closeAboutBtn"
-                class="mt-6 px-6 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors shadow-sm"
+                class="w-full px-6 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors shadow-sm"
             >
                 关闭
             </button>
@@ -190,8 +217,7 @@
 
     <button 
         id="backToTopBtn" 
-        class="fixed bottom-8 right-8 p-4 bg-primary-500 text-white rounded-full shadow-lg hover:bg-primary-600 transition-all duration-300 z-50"
-        style="opacity: 0; pointer-events: none;"
+        class="fixed bottom-8 right-8 p-3 bg-primary-500 text-white rounded-full shadow-lg hover:bg-primary-600 transition-all duration-300 z-40 opacity-0 translate-y-10"
         title="回到顶部"
     >
         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
